@@ -64,6 +64,12 @@
     		"airports" => array(
     				"url" => "airport_geojson.php",
     			),
+    		"lakes" => array(
+    				"url" => "lake_geojson.php",
+    			),
+    		"rivers" => array(
+    				"url" => "river_geojson.php",
+    			),
     	);
 ?>
 
@@ -128,31 +134,33 @@
 							geojson_features[i] = response;							
 						}
 				});
-
-				geojson_layers[i] = new L.GeoJSON(geojson_features[i], 
-						{
+				
+				var point_config = null;
+				if(geojson_features[i]['features'][0]['geometry']['type']=='Point'){
+					point_style = geojson_features[i]['features'][0]['properties']['style'];
+					point_config = {
 						    pointToLayer: function (latlng) {
 						        return new L.CircleMarker(latlng, 
-						        		{
-								            radius: 8,
-								            fillColor: "#ff7800",
-								            color: "#000",
-								            weight: 1,
-								            opacity: 1,
-								            fillOpacity: 0.8
-								        }
+								        point_style
 						        );
 						    },
-						}
-			    	);
+						} 
+				}
+				geojson_layers[i] = new L.GeoJSON(geojson_features[i], point_config	);
 
 				geojson_layers[i].on("featureparse", function (e) {
+					// the popups
 					if (e.properties && e.properties.popupContent) {
 				        popupContent = e.properties.popupContent;
 				    }else{
 					    popupContent = '';
 				    }
-				    e.layer.bindPopup(popupContent);								
+				    e.layer.bindPopup(popupContent);
+
+				    // the style (for point we need special treatment)
+				    if (e.properties && e.properties.style && e.layer.setStyle){
+				        e.layer.setStyle(e.properties.style);
+				    }								
 				});
 				    	
 		    	

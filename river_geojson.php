@@ -3,7 +3,7 @@
     include_once("connection.php");
     
     // CHANGE MySQL TO JSON :
-    $SQL = "SELECT cat, name, astext(shape) as shape FROM airports";
+    $SQL = "SELECT cat, nam as name, astext(shape) as shape FROM rivers";
     $result = mysql_query($SQL, $connection);
     $features = array();    
     while($row = mysql_fetch_array($result)){
@@ -15,12 +15,9 @@
 		        			"cat" => $row["cat"],
 		        			"name" => $row["name"], 
 	        				"style" => array(
-	        					"radius"=> 8,
-					            "fillColor"=> "#ff7800",
-					            "color"=> "#000",
-					            "weight"=> 1,
-					            "opacity"=> 1,
-					            "fillOpacity"=> 0.8
+	        					"color"=> "#004070",
+	        					"weight"=> 1,
+	        					"opacity"=> 0.9
         					),
         					"popupContent"=> $row["name"],
 	        			),
