@@ -13,7 +13,13 @@
         			"type" => "Feature",
         			"properties" => array(
 		        			"cat" => $row["cat"],
-		        			"name" => $row["name"],        					
+		        			"name" => $row["name"], 
+	        				"style" => array(
+	        					"color"=> "#004070",
+	        					"weight"=> 4,
+	        					"opacity"=> 0.9
+        					),
+        					"popupContent"=> $row["name"],
 	        			),
         			"geometry" => json_decode($json),
 	        );

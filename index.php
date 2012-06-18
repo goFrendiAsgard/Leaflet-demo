@@ -1,28 +1,68 @@
 <?php
-	// NOTE :
-	//   alaska using EPSG:2964, while WGS 84 using EPSG:4326, just change it to WGS84
-    // CHANGE SHP TO MySQL :	
-    //   ogr2ogr -f "MySQL" MySQL:"[database_name],user=root,host=localhost,password=[root_password]" -lco engine=MYISAM airports.shp -s_srs EPSG:2964 -t_srs EPSG:4326	
-	// google map:
-	//   http://maps.googleapis.com/maps/api/staticmap?center=Brooklyn+Bridge,New+York,NY&zoom=13&size=600x300&maptype=roadmap&markers=color:blue%7Clabel:S%7C40.702147,-74.015794&markers=color:green%7Clabel:G%7C40.711614,-74.012318&markers=color:red%7Ccolor:red%7Clabel:C%7C40.718217,-73.998284&sensor=false
-	// how to backup:
-	//	 mysqldump -u root -p[root_password] [database_name] > dumpfilename.sql
-	// how to restore:
-	//   mysql -u root -p[root_password] [database_name] < dumpfilename.sql    
+	/**
+	 * 
+	 * NOTE :
+	 *   alaska using EPSG:2964, while WGS 84 using EPSG:4326, just change it to WGS84
+     * CHANGE SHP TO MySQL :	
+     *   ogr2ogr -f "MySQL" MySQL:"[database_name],user=root,host=localhost,password=[root_password]" -lco engine=MYISAM airports.shp -s_srs EPSG:2964 -t_srs EPSG:4326	
+	 * how to backup:
+	 *	 mysqldump -u root -p[root_password] [database_name] > dumpfilename.sql
+	 * how to restore:
+	 *   mysql -u root -p[root_password] [database_name] < dumpfilename.sql
+	 *   
+	 **/
+
+	// map's center
 	$map_longitude = 60.293165;
     $map_latitude = -158.959803;
+    // map's default zoom level
     $map_zoom = 5;
+    // the height & width of the map
     $map_height = "500px";
     $map_width = "100%";
+    // the base maps (background maps), taken from cloudmade or google map
     $map_base = array(
-    		"base" => array(
+    		"Base Map" => array(
+    				"type" => "cloudmade",
     				"url" => "http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/997/256/{z}/{x}/{y}.png",
     				"max_zoom" => 18,
-    			),    	
+    				"attribution"=>'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade',
+    			),  
+    		"Minimal Map" => array(
+    				"type" => "cloudmade",
+    				"url" => "http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/22677/256/{z}/{x}/{y}.png",
+    				"max_zoom" => 18,
+    				"attribution"=>'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade',
+    			),
+    		"Midnight Commander"=>array(
+    				"type" => "cloudmade",
+    				"url" => "http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/999/256/{z}/{x}/{y}.png",
+    				"max_zoom" => 18,
+    				"attribution"=>'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade',
+    			),
+    		"Motor Way"=>array(
+    				"type" => "cloudmade",
+    				"url" => "http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/46561/256/{z}/{x}/{y}.png",
+    				"max_zoom" => 18,
+    				"attribution"=>'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade',
+    			),
+    		"Google Satellite"=>array(
+    				"type"=>"google",
+    				"map_type"=>"SATELLITE",
+    			),
+    		"Google Roadmap"=>array(
+    				"type"=>"google",
+    				"map_type"=>"ROADMAP",
+    			),
+    		"Google Hybrid"=>array(
+    				"type"=>"google",
+    				"map_type"=>"HYBRID",
+    			),
     	);
+    // the geojson features.
     $map_geojson = array(
     		"airports" => array(
-    				"url" => "airport_geojson.php"
+    				"url" => "airport_geojson.php",
     			),
     	);
 ?>
@@ -39,35 +79,38 @@
 	    }
 	</style>
 	<script type="text/javascript" src="leaflet/dist/leaflet.js"></script>	
+	<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.2&sensor=false"></script>	
+	<script type="text/javascript" src="google/Google.js"></script>
 	<script type="text/javascript" src="jquery/jquery-1.7.2.min.js"></script>
 	<script type="text/javascript">
-		$(document).ready(function(){			
+		$(document).ready(function(){
+			var shown_layers = new Array();
+			
+			// render the base maps and default_shown_base_map
+			var baseMaps = new Object();
+			var i = 0;
+			<?php 
+				foreach($map_base as $label=>$layer){
+					if($layer["type"]=="cloudmade"){ ?>
+						var cloudmadeAttribution = '<?php echo $layer["attribution"]; ?>';
+						var cloudmadeOptions = {maxZoom: <?php echo $layer['max_zoom'];?>, attribution: cloudmadeAttribution};
+						var cloudmadeUrl = '<?php echo $layer['url'];?>';
+						baseMaps['<?php echo $label;?>'] = new L.TileLayer(cloudmadeUrl, cloudmadeOptions); 
+			<?php			
+					}else if($layer["type"]=="google"){ ?>
+						map_type = '<?php echo $layer["map_type"];?>';
+						baseMaps['<?php echo $label;?>'] = new L.Google(map_type);
+			<?php			
+					}?> 
+					
+					if(i==0){
+						shown_layers[shown_layers.length] = baseMaps['<?php echo $label;?>'];
+					}
+					i++;
+			<?php 	
+				}?>
 
-			var cloudmadeAttribution = 'Map data &copy; 2011 OpenStreetMap contributors, Imagery &copy; 2011 CloudMade';
-			cloudmadeOptions = {maxZoom: 18, attribution: cloudmadeAttribution};
-			cloudmadeNormalUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/997/256/{z}/{x}/{y}.png';
-			cloudmadeMinimalUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/22677/256/{z}/{x}/{y}.png';
-			cloudmadeMidnightUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/999/256/{z}/{x}/{y}.png';
-			cloudmadeMotorWaysUrl = 'http://{s}.tile.cloudmade.com/BC9A493B41014CAABB98F0471D759707/46561/256/{z}/{x}/{y}.png';
-
-			var normal = new L.TileLayer(cloudmadeNormalUrl, cloudmadeOptions),
-			    minimal = new L.TileLayer(cloudmadeMinimalUrl, cloudmadeOptions),
-				midnightCommander = new L.TileLayer(cloudmadeMidnightUrl, cloudmadeOptions),
-				motorways = new L.TileLayer(cloudmadeMotorWaysUrl, cloudmadeOptions);
-		
-			var map_latitude = <?php echo $map_latitude;?>;
-			var map_longitude = <?php echo $map_longitude;?>;
-			var map_zoom = <?php echo $map_zoom;?>;
-			var map = new L.Map('map', {
-				center: new L.LatLng(map_longitude, map_latitude), zoom: map_zoom, layers: [normal]
-			});
-		
-			var baseMaps = {
-				"Normal" : normal,
-				"Minimal": minimal,
-				"Night View": midnightCommander,
-				"Motor Ways": motorways
-			};
+			
 
 			var geojson_layers = new Array();
 			var geojson_features = new Array();
@@ -82,29 +125,63 @@
 					type : 'GET',
 					dataType : 'json',
 					success : function(response){
-							geojson_features[i] = response;
-							/*
-							geojson_features[i] = {
-						            "type": "FeatureCollection",
-						            "features": [
-						            { "type": "Feature", "properties": { "id": 1, "nama": "Wood-tikchik" }, "geometry": { "type": "Point", "coordinates": [ -157.956803, 60.293165 ] } }
-						            ,
-						            { "type": "Feature", "properties": { "id": 2, "nama": "Lake Clark National Park" }, "geometry": { "type": "Point", "coordinates": [ -155.524763, 60.564959 ] } }
-						            ,
-						            { "type": "Feature", "properties": { "id": 3, "nama": "Bethel" }, "geometry": { "type": "Point", "coordinates": [ -161.747541, 60.792412 ] } }
-
-						            ]
-						        };
-						    */
-							geojson_layers[i] = new L.GeoJSON(geojson_features[i]);
+							geojson_features[i] = response;							
 						}
 				});
+
+				geojson_layers[i] = new L.GeoJSON(geojson_features[i], 
+						{
+						    pointToLayer: function (latlng) {
+						        return new L.CircleMarker(latlng, 
+						        		{
+								            radius: 8,
+								            fillColor: "#ff7800",
+								            color: "#000",
+								            weight: 1,
+								            opacity: 1,
+								            fillOpacity: 0.8
+								        }
+						        );
+						    },
+						}
+			    	);
+
+				geojson_layers[i].on("featureparse", function (e) {
+					if (e.properties && e.properties.popupContent) {
+				        popupContent = e.properties.popupContent;
+				    }else{
+					    popupContent = '';
+				    }
+				    e.layer.bindPopup(popupContent);								
+				});
+				    	
+		    	
+				shown_layers[shown_layers.length] = geojson_layers[i];				
 				overlayMaps[geojson_labels[i]] = geojson_layers[i];
 				i++;							
 			<?php } ?>
 	
+			
+
+			// define map parameter
+			var map_latitude = <?php echo $map_latitude;?>;
+			var map_longitude = <?php echo $map_longitude;?>;
+			var map_zoom = <?php echo $map_zoom;?>;
+			var map = new L.Map('map', {
+				center: new L.LatLng(map_longitude, map_latitude), zoom: map_zoom,
+			});
+			// add shown layers to the map
+			for(var i=0; i<shown_layers.length; i++){
+				map.addLayer(shown_layers[i]);
+			}
+			
+			// this is counter-intuitive, feature-parse is triggered once we add a geojson feature to a geojson layer
+			for(var i=0; i<geojson_layers.length; i++){
+				geojson_layers[i].addGeoJSON(geojson_features[i]);
+			}
+
+			// add layer control, so that user can adjust the visibility of the layers
 			layersControl = new L.Control.Layers(baseMaps, overlayMaps);
-	
 			map.addControl(layersControl);
 		
 		});    
